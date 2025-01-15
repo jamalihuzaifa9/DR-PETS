@@ -320,36 +320,6 @@ class MPC(Controller):
             costs4 = tf.reduce_mean(costs, axis=1)
             return costs4, pred_trajs
         else:
-            '''
-            def iteration(t, total_cost, cur_obs, state_traj, current_cost_traj):
-                cur_acs = ac_seqs[t]
-                #tf.concat([ac_traj, cur_acs[None]], axis = 0)
-                #ac_traj.append(cur_acs)
-                next_obs = self._predict_next_obs(cur_obs, cur_acs)
-                state_traj = tf.concat([state_traj, next_obs[None]], axis=0)
-                #state_traj[t] = next_obs[None]
-                #state_traj.write(tf.cast(t, dtype='int32'), next_obs)
-                delta_cost = tf.reshape(
-                    self.obs_cost_fn(next_obs) + self.ac_cost_fn(cur_acs), [-1, self.npart]
-                )
-                #current_cost_traj = current_cost_traj.write(tf.cast(t, dtype='int32'), tf.reshape(delta_cost, [-1, self.optimizer.popsize * self.npart, 1]))
-                current_cost_traj = tf.concat([current_cost_traj, tf.reshape(delta_cost, [-1, self.optimizer.popsize*self.npart, 1])], axis=0)
-                #current_cost_traj[t] = tf.reshape(delta_cost, [-1, self.optimizer.popsize * self.npart, 1])
-                b = tf.stack(tf.reshape(delta_cost, [-1, self.optimizer.popsize*self.npart, 1]))
-                self.a[self.i] = b
-                self.i = self.i +1
-                # t + 1, total_cost + delta_cost, self.obs_postproc2(next_obs)
-                return t + 1, total_cost + (tf.math.pow(
-                    self.GAMMA, tf.cast(t, dtype='float32')) * delta_cost), self.obs_postproc2(next_obs), state_traj, current_cost_traj
-
-            _, costs, _, state_traj, current_cost_traj = tf.while_loop(
-                cond=continue_prediction, body=iteration, loop_vars=[t, init_costs, init_obs, state_traj, current_cost_traj],
-                shape_invariants=[
-                    t.get_shape(), init_costs.get_shape(), init_obs.get_shape(), tf.TensorShape([None, None, self.dO]),
-                    tf.TensorShape([None, None, self.dU])
-                ]
-            )
-            '''
             
             grad = []
             
@@ -390,27 +360,6 @@ class MPC(Controller):
             costs = init_costs
             costs = tf.where(tf.is_nan(costs), 1e6 * tf.ones_like(costs), costs)
 
-
-            # reg = tf.zeros([self.model.num_nets, self.optimizer.popsize, 1])
-            # for i in range(self.plan_hor):
-            #     rtg = tf.reduce_sum(current_cost_traj[i+1:self.plan_hor], axis=0)
-            #     rtg = self._expand_to_ts_format(rtg)
-            #     res = []
-            #     for j in range(rtg.get_shape()[0]):
-            #         temp = tf.norm(rtg[j], axis = 1, keepdims=True)
-            #         temp2 = tf.reshape(grad[j], [-1,1])
-            #         temp3 = tf.math.multiply(temp, temp2)
-            #         res.append(temp3)
-            #     res2 = tf.reshape(res, [self.model.num_nets, self.optimizer.popsize, -1, 1])
-            #     res3 = tf.reduce_mean(res2, axis=2)
-            #     reg = reg + res3
-
-            # #reg3 = tf.reduce_sum(reg, axis=0)
-            # reg4 = tf.reduce_mean(reg, axis=0)
-            # reg5 = tf.reduce_mean(reg4, axis=1)
-            # #reg5 = tf.reshape(reg4, [self.optimizer.popsize])
-
-
             costs4 = tf.reduce_mean(costs, axis=1) # average over ensemble
             # obj = costs4 - (self.EPSILON_W*tf.math.sqrt(reg5))
             obj = costs4
@@ -442,10 +391,6 @@ class MPC(Controller):
             return self.obs_postproc(obs, predictions)
         else:
             raise NotImplementedError()
-
-    # def _get_optvars(self):
-    #     z = [tf.identity(self.model.get_optvars()[i]) for i in range(len(self.model.optvars[:-2]))]
-    #     return z
 
     def _expand_to_ts_format(self, mat):
         dim = mat.get_shape()[-1]
@@ -479,16 +424,7 @@ class MPC(Controller):
         predictions = self._flatten_to_matrix(predictions)
         predictions2 = self.obs_postproc(obs, predictions)
         predictions3 = self._expand_to_ts_format(predictions2)
-        return predictions3
-
-    # def _gradients_reg(self, tensorState):
-    #     zz = tf.gradients(tensorState, self.z)
-    #     paramsGrad = [zz[k][self.net_number] for k in range(len(zz))]
-    #     paramGrad_norm = tf.linalg.global_norm(paramsGrad)
-    #     return paramGrad_norm
-
-
-    
+        return predictions3 
     
     def _gradients_reg(self, tensorState):
         gradients = []
@@ -498,90 +434,4 @@ class MPC(Controller):
             paramGrad_norm = tf.linalg.global_norm(paramsGrad)
             gradients.append(paramGrad_norm)
         return gradients
-    
-    # def _gradients_reg(self, tensorState):
-    #     zz = tf.gradients(tensorState, self.model.optvars[:-2])
-    #     # paramsGrad = [zz[k][i] for k in range(len(zz))]
-    #     # paramGrad_norm = tf.linalg.global_norm(paramsGrad)
-    #     # gradients.append(paramGrad_norm)
-    #     return zz
-        
-    # def _gradients_reg(self, obs, acs):
-    #     proc_obs = self.obs_preproc(obs)
-    #     proc_obs, acs = self._expand_to_ts_format(proc_obs), self._expand_to_ts_format(acs)
-    #     inputs = tf.concat([proc_obs, acs], axis=-1)
-    #     mean, var = self.model.create_prediction_tensors(inputs)
-    #     if self.model.is_probabilistic and not self.ign_var:
-    #         predictions = mean + tf.random_normal(shape=tf.shape(mean), mean=0, stddev=1) * tf.sqrt(var)
-    #     else:
-    #         predictions = mean
-    #     predictions = self._flatten_to_matrix(predictions)
-    #     predictions2 = self.obs_postproc(obs, predictions)
-    #     predictions3 = self._expand_to_ts_format(predictions2)
-    #     gradients = []
-    #     for i in range(predictions3.get_shape()[0]):
-    #         gradients_nn = []
-    #         for j in range(predictions3.get_shape()[1]):
-    #             zz = tf.gradients(predictions3[i][j], self.model.optvars[:-2])
-    #             paramsGrad = [zz[k][i] for k in range(len(zz))]
-    #             paramGrad_norm = tf.linalg.global_norm(paramsGrad)
-    #             gradients_nn.append(paramGrad_norm)
-    #         gradients.append(gradients_nn)
-    #     return gradients
-
-    # def _compile_cost(self, ac_seqs, get_pred_trajs=False):
-    #     t, nopt = tf.constant(0), tf.shape(ac_seqs)[0]
-    #     init_costs = tf.zeros([nopt, self.npart])
-    #     ac_seqs = tf.reshape(ac_seqs, [-1, self.plan_hor, self.dU])
-    #     ac_seqs = tf.reshape(tf.tile(
-    #         tf.transpose(ac_seqs, [1, 0, 2])[:, :, None],
-    #         [1, 1, self.npart, 1]
-    #     ), [self.plan_hor, -1, self.dU])
-    #     init_obs = tf.tile(self.sy_cur_obs[None], [nopt * self.npart, 1])
-
-    #     def continue_prediction(t, *args):
-    #         return tf.less(t, self.plan_hor)
-
-    #     if get_pred_trajs:
-    #         pred_trajs = init_obs[None]
-
-    #         def iteration(t, total_cost, cur_obs, pred_trajs):
-    #             cur_acs = ac_seqs[t]
-    #             next_obs = self._predict_next_obs(cur_obs, cur_acs)
-    #             delta_cost = tf.reshape(
-    #                 self.obs_cost_fn(next_obs) + self.ac_cost_fn(cur_acs), [-1, self.npart]
-    #             )
-    #             next_obs = self.obs_postproc2(next_obs)
-    #             pred_trajs = tf.concat([pred_trajs, next_obs[None]], axis=0)
-    #             return t + 1, total_cost + (tf.math.pow(
-    #                 self.GAMMA, tf.cast(t, dtype='float32')) * delta_cost), next_obs, pred_trajs
-
-    #         _, costs, _, pred_trajs = tf.while_loop(
-    #             cond=continue_prediction, body=iteration, loop_vars=[t, init_costs, init_obs, pred_trajs],
-    #             shape_invariants=[
-    #                 t.get_shape(), init_costs.get_shape(), init_obs.get_shape(), tf.TensorShape([None, None, self.dO])
-    #             ]
-    #         )
-
-            # Replace nan costs with very high cost
-        #     costs = tf.reduce_mean(tf.where(tf.is_nan(costs), 1e6 * tf.ones_like(costs), costs), axis=1)
-        #     pred_trajs = tf.reshape(pred_trajs, [self.plan_hor + 1, -1, self.npart, self.dO])
-        #     return costs, pred_trajs
-        # else:
-        #     def iteration(t, total_cost, cur_obs):
-        #         cur_acs = ac_seqs[t]
-        #         next_obs = self._predict_next_obs(cur_obs, cur_acs)
-        #         delta_cost = tf.reshape(
-        #             self.obs_cost_fn(next_obs) + self.ac_cost_fn(cur_acs), [-1, self.npart]
-        #         )
-        #         return t + 1, total_cost + (tf.math.pow(
-        #             self.GAMMA, tf.cast(t, dtype='float32')) * delta_cost), self.obs_postproc2(next_obs)
-
-        #     _, costs, _ = tf.while_loop(
-        #         cond=continue_prediction, body=iteration, loop_vars=[t, init_costs, init_obs]
-        #     )
-
-        #     # Replace nan costs with very high cost
-        #     costs = tf.reduce_mean(tf.where(tf.is_nan(costs), 1e6 * tf.ones_like(costs), costs), axis=1)
-        #     return costs
     
