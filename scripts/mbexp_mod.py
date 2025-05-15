@@ -13,7 +13,7 @@ from dmbrl.controllers.MPC import MPC
 from dmbrl.config import create_config
 
 # %%
-env = "cartpole"
+env = "pendulum"
 ctrl_type = "MPC"
 ctrl_args = []
 overrides = []
@@ -23,12 +23,19 @@ logdir = 'log'
 ctrl_args = DotMap(**{key: val for (key, val) in ctrl_args})
 cfg = create_config(env, ctrl_type, ctrl_args, overrides, logdir)
 cfg.ctrl_cfg.prop_cfg.model_init_cfg['num_nets'] = 5
-cfg.ctrl_cfg['opt_cfg'].cfg['popsize'] = 10
+cfg.ctrl_cfg['opt_cfg'].cfg['popsize'] = 5
+
 # cfg.ctrl_cfg.prop_cfg.npart= 10
 cfg.ctrl_cfg.prop_cfg.npart= 5
 # cfg.ctrl_cfg['prop_cfg'].model_init_cfg['num_nets'] = 5
+
 cfg.ctrl_cfg['prop_cfg'].model_init_cfg['num_nets'] = 5
 cfg.exp_cfg.sim_cfg.task_hor = 100
+cfg.ctrl_cfg['prop_cfg'].model_pretrained = True
+cfg.ctrl_cfg['prop_cfg'].model_init_cfg['load_model'] = True
+# cfg.ctrl_cfg['prop_cfg'].model_init_cfg['model_dir'] = r'/home/hozefa/PETS_GIT/PETS_MOD/log/PETS_CARTPOLE'
+cfg.ctrl_cfg['prop_cfg'].model_init_cfg['model_dir'] = r'/home/hozefa/PETS_GIT/PETS_MOD/log/PETS_MOD_PENDULUM'
+cfg.exp_cfg.exp_cfg.ntrain_iters = 50  
 cfg.pprint()
 
 # %%
@@ -54,5 +61,5 @@ with open(os.path.join(exp.logdir, "config.txt"), "w") as f:
     f.write(pprint.pformat(cfg.toDict()))
 
 # %%
-exp.nrecord = 0
+exp.nrecord = 1
 exp.run_experiment()
