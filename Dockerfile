@@ -1,4 +1,4 @@
-FROM nvidia/cuda:9.0-cudnn7-runtime-ubuntu16.04
+FROM nvidia/cuda:9.0-cudnn7-runtime-ubuntu18.04
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
@@ -9,7 +9,7 @@ RUN apt-get -y install libglu1-mesa libxi-dev libxmu-dev libglu1-mesa-dev
 
 # Install basic libraries
 RUN pip3 install --upgrade pip
-RUN pip3 install numpy tensorflow-gpu==1.9 matplotlib scipy scikit-learn future
+RUN pip3 install numpy tensorflow-gpu==1.12.0 matplotlib scipy scikit-learn future
 
 # Install MuJoCo + OpenAI gym
 RUN pip3 install gym==0.9.4
@@ -30,7 +30,7 @@ RUN pip3 install pandas multipledispatch pytest
 RUN cd GPflow/ && pip install . --no-deps
 
 # Create copy of Deep MBRL repo and place in ~/handful-of-trials
-RUN cd ~ && git clone https://github.com/kchua/handful-of-trials.git
+RUN cd ~ && git clone https://github.com/jamalihuzaifa9/DR-PETS.git
 
 # Environment setup
 RUN echo 'LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu' >> /root/.bashrc
